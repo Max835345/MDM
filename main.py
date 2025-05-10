@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
 
-
 # Генерация случайных точек
 H = np.random.rand(5, 2)
 m, n = H.shape
