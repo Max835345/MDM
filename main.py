@@ -1,40 +1,48 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.optimize import minimize
 from scipy.spatial import ConvexHull
 
-# Генерация случайных точек
-H = np.random.rand(5, 2)
+# Множество точек H
+H = np.random.rand(10, 2)
 m, n = H.shape
 
-# Инициализация
-v = np.zeros(n)
-p = np.ones(m) / m
-path = [v.copy()]
+# Целевая функция: ||H.T @ p||^2 = (H.T @ p)^T (H.T @ p)
+def objective(p):
+    v = H.T @ p
+    return np.dot(v, v)
 
-# МДМ-алгоритм
-for _ in range(1000):
-    scalars = H @ v
-    delta = np.max(scalars) - np.min(scalars)
-    if delta < 1e-6:
-        break
-    i_max = np.argmax(scalars)
-    i_min = np.argmin(scalars)
-    v = v - p[i_max] * (H[i_max] - H[i_min])
-    p[i_min] += p[i_max]
-    p[i_max] = 0
-    path.append(v.copy())
+# Ограничения:
+constraints = [
+    {'type': 'eq', 'fun': lambda p: np.sum(p) - 1}  # сумма весов = 1
+]
+bounds = [(0, 1) for _ in range(m)]  # веса >= 0
+
+# Начальное приближение — равномерное
+p0 = np.ones(m) / m
+
+# Решение задачи
+result = minimize(objective, p0, method='SLSQP', bounds=bounds, constraints=constraints)
+
+# Итоговая точка
+p_opt = result.x
+v_opt = H.T @ p_opt
 
 # Визуализация
-path = np.array(path)
-plt.plot(path[:,0], path[:,1], 'ro--')
-plt.scatter(H[:,0], H[:,1], c='blue', label='H')
-plt.scatter(0, 0, c='black', label='Начало координат')
-plt.scatter(path[-1,0], path[-1,1], c='green', label='Решение')
+plt.scatter(H[:, 0], H[:, 1], color='blue', label='H')
+plt.scatter(0, 0, color='black', label='Начало координат')
+plt.scatter(v_opt[0], v_opt[1], color='green', label='Решение')
+
+# Выпуклая оболочка
 hull = ConvexHull(H)
 for simplex in hull.simplices:
     plt.plot(H[simplex, 0], H[simplex, 1], 'k-')
-plt.legend()
-plt.title("МДМ-метод")
+
+# Вектор к решению
+plt.arrow(0, 0, v_opt[0], v_opt[1], head_width=0.02, color='gray', length_includes_head=True)
+
+plt.title(f"Ближайшая точка к началу: ||v|| = {np.linalg.norm(v_opt):.4f}")
 plt.axis('equal')
 plt.grid(True)
+plt.legend()
 plt.show()
